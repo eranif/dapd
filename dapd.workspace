@@ -1,0 +1,12 @@
+{
+ "workspace_type": "File System Workspace",
+ "name": "dapd",
+ "configs": [{
+   "name": "Debug",
+   "targets": [["build", "C:\\msys64\\clang64\\bin\\cargo.exe build --color always"], ["clean", "C:\\msys64\\clang64\\bin\\cargo.exe clean --color always"], ["clippy", "C:\\msys64\\clang64\\bin\\cargo.exe clippy --color always"], ["tests", "C:\\msys64\\clang64\\bin\\cargo.exe test --color always"]],
+   "file_extensions": "*.cpp;*.c;*.txt;*.json;*.hpp;*.cc;*.cxx;*.xml;*.h;*.wxcp;*.py;*.php;*.rb;*.html;*.js;*.ts;*.rs;*.iss;*.md;*.bat;*.sh;*.cmake;*.rs;*.toml",
+   "excludeFilesPattern": "*.o;*.pyc;*.obj;*.workspace;*.o.d;*.exe;*.dll;*.project",
+   "excludePaths": "",
+   "debugger": "GNU gdb debugger"
+  }]
+}
