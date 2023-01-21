@@ -2,8 +2,8 @@ use dap::prelude::*;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 
-mod ide;
-use ide::IdeAcceptor;
+mod libdapd;
+use libdapd::IdeAcceptor;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let adapter = IdeAcceptor::default();
