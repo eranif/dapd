@@ -1,5 +1,5 @@
-mod ide;
 mod drivers;
+mod ide;
 
+pub use drivers::*;
 pub use ide::IdeAcceptor;
-pub use drivers::Driver;

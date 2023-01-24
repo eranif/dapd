@@ -1,5 +1,5 @@
 mod driver;
-mod gdb;
+mod driver_gdb;
 
-pub use driver::Driver;
-pub use gdb::DriverGDB;
+pub use driver::{Driver, Message};
+pub use driver_gdb::DriverGDB;
