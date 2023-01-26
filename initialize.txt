@@ -1,0 +1,3 @@
+Content-Length: 392
+
+{"seq":2,"type":"request","command":"launch","arguments":{"noDebug":false,"program":"C:\\Users\\eran\\Documents\\TestWxCrafter\\build-Debug\\bin\\TestWxCrafter.exe","args":[],"cwd":"C:\\Users\\eran\\Documents\\TestWxCrafter","env":["SHELL=CMD.EXE","CodeLiteDir=C:\\msys64\\home\\eran\\devl\\codelite\\build-release\\install","WXCFG=clang_x64_dll\\mswu","WXWIN=C:\\msys64\\home\\eran\\root"]}}

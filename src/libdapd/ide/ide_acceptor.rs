@@ -48,7 +48,7 @@ impl Adapter for IdeAcceptor {
 
     /// the main event loop
     /// the server will call this per command received from the client
-    async fn accept(
+    async fn handle_request(
         &mut self,
         request: Request,
         _ctx: &mut dyn Context,
@@ -132,7 +132,7 @@ mod test {
 
         let mut transport = BasicClient::new(BufWriter::new(Vec::new()));
         let mut acceptor = IdeAcceptor::default();
-        let Ok(res) = acceptor.accept(request, &mut transport).await else {
+        let Ok(res) = acceptor.handle_request(request, &mut transport).await else {
             panic!("failed to process request");
         };
         assert!(res.success);
@@ -163,7 +163,7 @@ mod test {
 
         let mut transport = BasicClient::new(BufWriter::new(Vec::new()));
         let mut acceptor = IdeAcceptor::default();
-        let Ok(res) = acceptor.accept(request, &mut transport).await else {
+        let Ok(res) = acceptor.handle_request(request, &mut transport).await else {
             panic!("failed to process request");
         };
         assert!(res.success);
