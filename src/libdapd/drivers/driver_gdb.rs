@@ -3,6 +3,7 @@ use crate::events::ProcessEventBody;
 use crate::libdapd::{drivers::Message, Driver};
 use crate::requests::LaunchRequestArguments;
 use crate::types::ProcessEventStartMethod;
+use async_trait::async_trait;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use std::{error::Error as StdError, result::Result};
 
@@ -24,7 +25,7 @@ impl DriverGDB {
 }
 
 impl DriverGDB {
-    fn send_cmd_raw(
+    async fn send_cmd_raw(
         &mut self,
         cmd: &str,
     ) -> Result<gdb::MessageRecord<gdb::ResultClass>, Box<dyn StdError>> {
@@ -32,13 +33,12 @@ impl DriverGDB {
             return Err(Box::new(IoError::new(IoErrorKind::InvalidInput, "gdb is not running")));
         };
 
-        match debugger.send_cmd_raw(cmd) {
-            Ok(record) => Ok(record),
-            Err(e) => Err(make_error(e)),
-        }
+        debugger.send_cmd_raw(cmd).await;
+        Ok(debugger.read_result_record().await)
     }
 }
 
+#[allow(dead_code)]
 fn make_error(gdb_err: gdb::Error) -> Box<dyn StdError> {
     match gdb_err {
         gdb::Error::IOError(e) => Box::new(e),
@@ -53,9 +53,9 @@ fn make_error(gdb_err: gdb::Error) -> Box<dyn StdError> {
 fn make_error_from_string(io_kind: IoErrorKind, msg: &str) -> Box<dyn StdError> {
     Box::new(IoError::new(io_kind, msg))
 }
-
+#[async_trait]
 impl Driver for DriverGDB {
-    fn launch(
+    async fn launch(
         &mut self,
         launch_args: &LaunchRequestArguments,
     ) -> Result<ProcessEventBody, Box<dyn StdError>> {
@@ -64,13 +64,15 @@ impl Driver for DriverGDB {
         };
         // always use forward slash
         let exepath = exepath.replace("\\", "/");
-        let Ok(debugger) = gdb::Debugger::start() else {
+        let Ok(debugger) = gdb::Debugger::start().await else {
             return Err(make_error_from_string(IoErrorKind::InvalidInput, "failed to start gdb debugger!"));
         };
 
         // Load the executable
         self.debugger = Some(debugger);
-        let res = self.send_cmd_raw(&format!(r#"-file-exec-and-symbols "{}"#, exepath))?;
+        let res = self
+            .send_cmd_raw(&format!(r#"-file-exec-and-symbols "{}"#, exepath))
+            .await?;
         if res.class != gdb::ResultClass::Done {
             return Err(make_error_from_string(
                 IoErrorKind::InvalidData,
@@ -91,8 +93,9 @@ impl Driver for DriverGDB {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn test_launch_gdb() -> Result<(), Box<dyn StdError>> {
+
+    #[tokio::test]
+    async fn test_launch_gdb() -> Result<(), Box<dyn StdError>> {
         let mut driver = DriverGDB::new();
         let launch_args = LaunchRequestArguments {
             no_debug: Some(false),
@@ -105,7 +108,7 @@ mod tests {
             cwd: None,
             env: None,
         };
-        let _ = driver.launch(&launch_args)?;
+        let _ = driver.launch(&launch_args).await?;
         Ok(())
     }
 }

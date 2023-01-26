@@ -1,4 +1,5 @@
 use crate::requests::LaunchRequestArguments;
+use async_trait::async_trait;
 use dap::prelude::*;
 use thiserror::Error;
 
@@ -41,12 +42,13 @@ pub enum IdeAcceptorError {
     UnhandledCommandError,
 }
 
+#[async_trait]
 impl Adapter for IdeAcceptor {
     type Error = IdeAcceptorError;
 
     /// the main event loop
     /// the server will call this per command received from the client
-    fn accept(
+    async fn accept(
         &mut self,
         request: Request,
         _ctx: &mut dyn Context,
@@ -109,8 +111,8 @@ mod test {
         r
     }
 
-    #[test]
-    fn test_initialize_request() {
+    #[tokio::test]
+    async fn test_initialize_request() {
         let init_request = r#"{
   "arguments": {
     "adapterID": "my-id",
@@ -130,7 +132,7 @@ mod test {
 
         let mut transport = BasicClient::new(BufWriter::new(Vec::new()));
         let mut acceptor = IdeAcceptor::default();
-        let Ok(res) = acceptor.accept(request, &mut transport) else {
+        let Ok(res) = acceptor.accept(request, &mut transport).await else {
             panic!("failed to process request");
         };
         assert!(res.success);
@@ -138,8 +140,8 @@ mod test {
         assert!(as_str.contains("request_seq"));
     }
 
-    #[test]
-    fn test_launch_request() {
+    #[tokio::test]
+    async fn test_launch_request() {
         let init_request = r#"{
   "arguments": {
     "args": [],
@@ -161,7 +163,7 @@ mod test {
 
         let mut transport = BasicClient::new(BufWriter::new(Vec::new()));
         let mut acceptor = IdeAcceptor::default();
-        let Ok(res) = acceptor.accept(request, &mut transport) else {
+        let Ok(res) = acceptor.accept(request, &mut transport).await else {
             panic!("failed to process request");
         };
         assert!(res.success);
