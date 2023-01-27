@@ -64,7 +64,7 @@ impl DriverGDB {
             system_process_id: Some(-1),
             is_local_process: Some(true),
             start_method: Some(ProcessEventStartMethod::Launch),
-            pointer_size: None,
+            pointer_size: Some(8),
         })
     }
 }

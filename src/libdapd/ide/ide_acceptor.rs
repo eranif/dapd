@@ -29,12 +29,7 @@ impl IdeAcceptor {
     /// `Clone` the launch arguments (no Clone()) is available for
     /// the struct `LaunchRequestArguments`
     fn set_launch_arguments(&mut self, args: &LaunchRequestArguments) {
-        self.launch_arguments.no_debug = args.no_debug.clone();
-        self.launch_arguments.restart_data = args.restart_data.clone();
-        self.launch_arguments.program = args.program.clone();
-        self.launch_arguments.args = args.args.clone();
-        self.launch_arguments.cwd = args.cwd.clone();
-        self.launch_arguments.env = args.env.clone();
+        self.launch_arguments = args.clone();
     }
 }
 
@@ -64,9 +59,11 @@ impl Adapter for IdeAcceptor {
                     eprintln!("> Client '{client_name}' requested initialization.");
                     Ok(Response::make_success(
                         &request,
+                        // for now, these are the capabilities we support
                         ResponseBody::Initialize(Some(types::Capabilities {
                             supports_configuration_done_request: Some(true),
                             supports_evaluate_for_hovers: Some(true),
+                            supports_function_breakpoints: Some(true),
                             ..Default::default()
                         })),
                     ))
@@ -75,6 +72,7 @@ impl Adapter for IdeAcceptor {
                 }
             }
             Command::Launch(args) => {
+                eprintln!("> Launch called");
                 // keep the launch arguments
                 self.set_launch_arguments(&args);
                 if let Err(e) = self.gdb.launch(&args).await {
@@ -85,6 +83,20 @@ impl Adapter for IdeAcceptor {
                 } else {
                     Ok(Response::make_success(&request, ResponseBody::Launch))
                 }
+            }
+            Command::SetBreakpoints(_args) => {
+                eprintln!("> SetBreakpoints called");
+                Ok(Response::make_error(
+                    &request,
+                    "command SetBreakpoints unsupported",
+                ))
+            }
+            Command::SetFunctionBreakpoints(_args) => {
+                eprintln!("> SetFunctionBreakpoints called");
+                Ok(Response::make_error(
+                    &request,
+                    "command SetFunctionBreakpoints unsupported",
+                ))
             }
             Command::Next(_) => Ok(Response::make_ack(&request).unwrap()),
             _ => {
