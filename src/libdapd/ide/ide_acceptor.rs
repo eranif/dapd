@@ -149,6 +149,7 @@ mod test {
             assert!(res.success);
             let as_str = to_json(&res);
             assert!(as_str.contains("request_seq"));
+            let _ = transport.send_response(res);
         })
     }
 
