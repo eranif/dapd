@@ -1,3 +1,4 @@
+use crate::libdapd::DriverGDB;
 use crate::requests::LaunchRequestArguments;
 use async_trait::async_trait;
 use dap::prelude::*;
@@ -5,6 +6,7 @@ use thiserror::Error;
 
 pub struct IdeAcceptor {
     pub launch_arguments: LaunchRequestArguments,
+    pub gdb: DriverGDB,
 }
 
 impl Default for IdeAcceptor {
@@ -18,6 +20,7 @@ impl Default for IdeAcceptor {
                 cwd: None,
                 env: None,
             },
+            gdb: DriverGDB::new(),
         }
     }
 }
@@ -51,7 +54,7 @@ impl Adapter for IdeAcceptor {
     async fn handle_request(
         &mut self,
         request: Request,
-        _ctx: &mut dyn Context,
+        _client: &mut StdoutWriter,
     ) -> Result<Response, Self::Error> {
         eprintln!("Accept {:?}\n", request.command);
 
@@ -74,7 +77,14 @@ impl Adapter for IdeAcceptor {
             Command::Launch(args) => {
                 // keep the launch arguments
                 self.set_launch_arguments(&args);
-                Ok(Response::make_success(&request, ResponseBody::Launch))
+                if let Err(e) = self.gdb.launch(&args).await {
+                    Ok(Response::make_error(
+                        &request,
+                        &format!("Failed to launch gdb. {:?}", e),
+                    ))
+                } else {
+                    Ok(Response::make_success(&request, ResponseBody::Launch))
+                }
             }
             Command::Next(_) => Ok(Response::make_ack(&request).unwrap()),
             _ => {
@@ -88,7 +98,7 @@ impl Adapter for IdeAcceptor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::io::BufWriter;
+    use crate::libdapd::run_async;
 
     /// construct DP request from the payload
     fn build_dap_request(payload: &str) -> Request {
@@ -111,9 +121,10 @@ mod test {
         r
     }
 
-    #[tokio::test]
-    async fn test_initialize_request() {
-        let init_request = r#"{
+    #[test]
+    fn test_initialize_request() -> Result<(), Box<dyn std::error::Error>> {
+        run_async(async move {
+            let init_request = r#"{
   "arguments": {
     "adapterID": "my-id",
     "clientID": "wxdap",
@@ -128,21 +139,23 @@ mod test {
   "seq": 1,
   "type": "request"
 }"#;
-        let request = build_dap_request(init_request);
+            let request = build_dap_request(init_request);
 
-        let mut transport = BasicClient::new(BufWriter::new(Vec::new()));
-        let mut acceptor = IdeAcceptor::default();
-        let Ok(res) = acceptor.handle_request(request, &mut transport).await else {
+            let mut acceptor = IdeAcceptor::default();
+            let mut transport = StdoutWriter::new();
+            let Ok(res) = acceptor.handle_request(request, &mut transport).await else {
             panic!("failed to process request");
         };
-        assert!(res.success);
-        let as_str = to_json(&res);
-        assert!(as_str.contains("request_seq"));
+            assert!(res.success);
+            let as_str = to_json(&res);
+            assert!(as_str.contains("request_seq"));
+        })
     }
 
-    #[tokio::test]
-    async fn test_launch_request() {
-        let init_request = r#"{
+    #[test]
+    fn test_launch_request() -> Result<(), Box<dyn std::error::Error>> {
+        run_async(async move {
+            let init_request = r#"{
   "arguments": {
     "args": [],
     "cwd": "/home/eran/wd",
@@ -159,32 +172,33 @@ mod test {
   "seq": 2,
   "type": "request"
 }"#;
-        let request = build_dap_request(init_request);
+            let request = build_dap_request(init_request);
 
-        let mut transport = BasicClient::new(BufWriter::new(Vec::new()));
-        let mut acceptor = IdeAcceptor::default();
-        let Ok(res) = acceptor.handle_request(request, &mut transport).await else {
+            let mut acceptor = IdeAcceptor::default();
+            let mut transport = StdoutWriter::new();
+            let Ok(res) = acceptor.handle_request(request, &mut transport).await else {
             panic!("failed to process request");
         };
-        assert!(res.success);
-        assert_eq!(acceptor.launch_arguments.no_debug, Some(false));
-        assert_eq!(
-            acceptor.launch_arguments.cwd,
-            Some("/home/eran/wd".to_string())
-        );
+            assert!(res.success);
+            assert_eq!(acceptor.launch_arguments.no_debug, Some(false));
+            assert_eq!(
+                acceptor.launch_arguments.cwd,
+                Some("/home/eran/wd".to_string())
+            );
 
-        let env = acceptor
-            .launch_arguments
-            .env
-            .expect("expected non None environment!");
+            let env = acceptor
+                .launch_arguments
+                .env
+                .expect("expected non None environment!");
 
-        assert_eq!(env.len(), 4);
-        assert_eq!(env[0], "SHELL=CMD.EXE".to_string());
-        assert_eq!(
-            env[1],
-            "CodeLiteDir=/home/eran/devl/codelite/build-release/install".to_string()
-        );
-        assert_eq!(env[2], "WXCFG=clang_x64_dll/mswu".to_string());
-        assert_eq!(env[3], "WXWIN=/home/eran/root".to_string());
+            assert_eq!(env.len(), 4);
+            assert_eq!(env[0], "SHELL=CMD.EXE".to_string());
+            assert_eq!(
+                env[1],
+                "CodeLiteDir=/home/eran/devl/codelite/build-release/install".to_string()
+            );
+            assert_eq!(env[2], "WXCFG=clang_x64_dll/mswu".to_string());
+            assert_eq!(env[3], "WXWIN=/home/eran/root".to_string());
+        })
     }
 }
