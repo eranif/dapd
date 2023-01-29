@@ -1,0 +1,7 @@
+Content-Length: 234
+
+{"seq":1,"type":"request","command":"initialize","arguments":{"clientID":"wxdap","clientName":"wxdap","adapterID":"","locale":"en-US","linesStartAt1":false,"columnsStartAt1":false,"pathFormat":"path","supportsInvalidatedEvent":false}}
+
+Content-Length: 392
+
+{"seq":2,"type":"request","command":"launch","arguments":{"noDebug":false,"program":"C:\\Users\\eran\\Documents\\TestWxCrafter\\build-Debug\\bin\\TestWxCrafter.exe","args":[],"cwd":"C:\\Users\\eran\\Documents\\TestWxCrafter","env":["SHELL=CMD.EXE","CodeLiteDir=C:\\msys64\\home\\eran\\devl\\codelite\\build-release\\install","WXCFG=clang_x64_dll\\mswu","WXWIN=C:\\msys64\\home\\eran\\root"]}}
