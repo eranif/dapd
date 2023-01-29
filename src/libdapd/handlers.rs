@@ -53,12 +53,14 @@ pub async fn handle_launch(
 
             // send the ProcessEvent as well
             stdout
-                .write(Sendable::Event(Event::Process(process_event)))
+                .write(Sendable::Event(Event::make_event(EventBody::Process(
+                    process_event,
+                ))))
                 .unwrap();
 
             // and send the initialized event
             stdout
-                .write(Sendable::Event(Event::Initialized))
+                .write(Sendable::Event(Event::make_event(EventBody::Initialized)))
                 .expect("failed to write to stdout");
             recv
         }
