@@ -1,9 +1,7 @@
 use dap::line_reader::FileLineReader;
 use dap::prelude::*;
 mod libdapd;
-use crate::libdapd::run_async;
-use crate::libdapd::DriverGDB;
-use crate::responses::SetBreakpointsResponse;
+use crate::libdapd::{run_async, DriverGDB, InFlightRequest};
 use std::error::Error as StdError;
 
 /// handlers
@@ -24,15 +22,15 @@ async fn handle_configuration_stage(
                     match &request.command {
                         Command::SetBreakpoints(args) => {
                             tracing::debug!("> SetBreakpoints called");
-                            let response = if let Ok(breakpoints) = driver.set_breakpoints(&args).await {
-                                Response::make_success(
-                                    &request,
-                                    ResponseBody::SetBreakpoints(SetBreakpointsResponse { breakpoints }),
-                                )
-                            } else {
-                                Response::make_error(&request, &format!("failed to set breakpoints"))
-                            };
-                            stdout.write(dap::client::Sendable::Response(response)).expect("failed to write to stdout!");
+                            match driver.set_breakpoints(&args).await {
+                                Err(e) => {
+                                    let response = Response::make_error(&request, &format!("failed to set breakpoints. {e}"));
+                                    stdout.write(dap::client::Sendable::Response(response)).expect("failed to write to stdout!");
+                                }
+                                Ok(()) => {
+                                    // TODO: store the request and put it in the in-flight queue
+                                }
+                            }
                         }
                         Command::SetFunctionBreakpoints(_args) => {
                             tracing::debug!("> SetFunctionBreakpoints called");
@@ -63,6 +61,7 @@ fn main() -> Result<(), Box<dyn StdError>> {
         let mut server = Server::new();
         let mut stdin = FileLineReader::new("session.txt").await;
         let mut driver_gdb = DriverGDB::new();
+        let mut _in_flight_requests = Vec::<InFlightRequest>::new();
 
         // the session starts with the "initialize" request
         let request = server.accept_request(&mut stdin).await?;

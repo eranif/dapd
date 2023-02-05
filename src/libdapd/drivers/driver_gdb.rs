@@ -1,6 +1,5 @@
 use crate::events::ProcessEventBody;
 use crate::requests::{LaunchRequestArguments, SetBreakpointsArguments};
-use crate::types::Breakpoint;
 use crate::types::ProcessEventStartMethod;
 use gdb::Record;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
@@ -78,9 +77,8 @@ impl DriverGDB {
     pub async fn set_breakpoints(
         &mut self,
         _args: &SetBreakpointsArguments,
-    ) -> Result<Vec<Breakpoint>, Box<dyn StdError>> {
-        let breakpoints = Vec::<Breakpoint>::new();
-        Ok(breakpoints)
+    ) -> Result<(), Box<dyn StdError>> {
+        Ok(())
     }
 }
 
