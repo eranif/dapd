@@ -1,4 +1,4 @@
-use crate::libdapd::DriverGDB;
+use crate::libdapd::{DriverGDB, InFlightRequestQueue};
 use dap::client::Sendable;
 use dap::prelude::*;
 use gdb::Record;
@@ -75,6 +75,57 @@ pub async fn handle_launch(
         }
     };
     output_channel
+}
+
+/// Handle "configuration" stage. During this stage, the server
+/// only accepts SetBreakpoint* requests until a "configurationDone"
+/// request arrives
+pub async fn handle_configuration_stage(
+    server: &mut Server,
+    stdin: &mut impl LineReader,
+    driver: &mut DriverGDB,
+    stdout: &mut StdoutWriter,
+    _gdb_output_channel: &mut Receiver<Record>,
+    in_flight_requests: &mut InFlightRequestQueue,
+) {
+    loop {
+        tokio::select!(
+            request = server.accept_request(stdin) => {
+                // received request from the IDE
+                if let Ok(request) = request {
+                    match &request.command {
+                        Command::SetBreakpoints(args) => {
+                            tracing::debug!("> SetBreakpoints called");
+                            match driver.set_breakpoints(&args).await {
+                                Err(e) => {
+                                    let response = Response::make_error(&request, &format!("failed to set breakpoints. {e}"));
+                                    stdout.write(dap::client::Sendable::Response(response)).expect("failed to write to stdout!");
+                                }
+                                Ok(()) => {
+                                    in_flight_requests.push(request.clone());
+                                }
+                            }
+                        }
+                        Command::SetFunctionBreakpoints(_args) => {
+                            tracing::debug!("> SetFunctionBreakpoints called");
+                            let response = Response::make_error(&request, "command SetFunctionBreakpoints is unsupported");
+                            stdout.write(dap::client::Sendable::Response(response)).expect("failed to write to stdout!");
+                        }
+                        Command::ConfigurationDone => {
+                            tracing::debug!("> ConfigurationDone called");
+                            let response = Response::make_success(&request, ResponseBody::ConfigurationDone);
+                            stdout.write(dap::client::Sendable::Response(response)).expect("failed to write to stdout!");
+                            break;
+                        }
+                        _ => {
+                            let response = Response::make_error(&request, "Can only accept configuration requests at this stage");
+                            stdout.write(dap::client::Sendable::Response(response)).expect("failed to write to stdout!");
+                        }
+                    }
+                }
+            }
+        )
+    }
 }
 
 #[cfg(test)]

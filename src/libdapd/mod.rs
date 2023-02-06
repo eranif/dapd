@@ -28,9 +28,3 @@ pub fn run_async(future: impl Future) -> Result<(), Box<dyn std::error::Error>> 
     local.block_on(&rt, future);
     Ok(())
 }
-
-#[derive(Clone)]
-#[allow(dead_code)]
-pub enum InFlightRequest {
-    SetBreakpoint(dap::requests::Request),
-}
